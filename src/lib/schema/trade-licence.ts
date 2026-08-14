@@ -50,37 +50,47 @@ export const tradeLicenceSchema = z.object({
       'The trade licence number, printed near the top. Labelled "License No." / "Licence Number" / رقم الرخصة. Digits, sometimes with a CN/ or a dash prefix. Copy it exactly as printed.',
     ),
 
-  legalNameEn: z
-    .string()
-    .nullable()
-    .describe(
-      'The entity the licence is issued to, in English, including its legal form. Never null on a genuine licence: if the document prints only one name — commonly labelled "Trade Name" or الاسم التجاري — that name goes here. Only when the document prints a licence holder AND a separate trade name does this take the holder ("License", "Licensee", صاحب الرخصة) and the trade name go in tradeNameEn.',
-    ),
-
-  legalNameAr: z
-    .string()
-    .nullable()
-    .describe(
-      'The same entity name in Arabic, if present on the document. Null if the licence is English-only. Do not transliterate the English name — return only Arabic actually printed on the page.',
-    ),
-
   /**
-   * Free-zone licences routinely print the licence holder and the trading name
-   * as two separate fields. They are often identical and sometimes are not, and
-   * a pipeline that collapses them loses that distinction silently.
+   * The name every UAE licence carries.
+   *
+   * This was modelled backwards at first: `legalNameEn` was required and the
+   * trade name optional, which is the opposite of how these documents work. A
+   * DED licence prints one name and labels it "Trade Name"; a DIEZ free-zone
+   * licence prints a licence holder *and* a trade name. The trade name is the
+   * universal field; the holder is the occasional extra.
+   *
+   * The model told me so twice. Handed a licence labelled "Trade Name", it put
+   * the value in `tradeNameEn` and left the required `legalNameEn` null, which
+   * cost a correction attempt on every clean read. Two rounds of increasingly
+   * emphatic field descriptions did not move it, because it was not misreading
+   * — the schema disagreed with the document. Prompt wording cannot fix a data
+   * model that is wrong about the world.
    */
   tradeNameEn: z
     .string()
     .nullable()
     .describe(
-      'Null unless the document prints TWO separate name fields — a licence holder ("License", "Licensee", صاحب الرخصة) AND a trade name ("Trade Name", الاسم التجاري). Only then does the trade name go here, and it should be returned even if identical to the holder. When the document prints just one name, whatever its label, that name belongs in legalNameEn and this field is null.',
+      'The trade name (الاسم التجاري) in English, including the legal form. This is the name printed on every UAE licence, usually labelled "Trade Name". Never null on a genuine licence.',
     ),
 
   tradeNameAr: z
     .string()
     .nullable()
     .describe(
-      'The Arabic trade name, under the same condition as tradeNameEn: only when the document prints a separate holder and trade name. Null otherwise. Never a transliteration.',
+      'The same trade name in Arabic, as printed. Null if the licence is English-only. Do not transliterate the English name — return only Arabic actually printed on the page.',
+    ),
+
+  /**
+   * The occasional second name. Free zones such as DIEZ print a licence holder
+   * separately from the trade name; mainland DED licences generally do not.
+   * Collapsing the two loses a real distinction, so it gets its own field —
+   * just not the required one.
+   */
+  licenceHolderEn: z
+    .string()
+    .nullable()
+    .describe(
+      'Null on most licences. Populate only where the page prints a licence holder as a field distinct from the trade name — labelled "License", "Licensee" or صاحب الرخصة — even if its value matches the trade name.',
     ),
 
   legalForm: z

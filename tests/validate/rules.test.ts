@@ -12,10 +12,9 @@ const NOW = new Date('2026-08-13T00:00:00Z');
 const valid: TradeLicence = {
   isTradeLicence: true,
   licenceNumber: '784512',
-  legalNameEn: 'Al Maha Logistics Solutions L.L.C',
-  legalNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
-  tradeNameEn: null,
-  tradeNameAr: null,
+  tradeNameEn: 'Al Maha Logistics Solutions L.L.C',
+  tradeNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
+  licenceHolderEn: null,
   legalForm: 'Limited Liability Company',
   managerName: 'Yousef Abdulrahman Al Marzooqi',
   issuingAuthority: 'Department of Economic Development - Dubai',
@@ -136,24 +135,19 @@ describe('activities must arrive as a list', () => {
 
 describe('the Arabic name must be Arabic', () => {
   it('rejects a transliteration', () => {
-    expect(codes({ legalNameAr: 'Al Maha Logistics Solutions' })).toContain(
+    expect(codes({ tradeNameAr: 'Al Maha Logistics Solutions' })).toContain(
       'ARABIC_NAME_NOT_ARABIC',
     );
   });
 
   it('accepts a genuine absence', () => {
-    expect(codes({ legalNameAr: null })).toEqual([]);
+    expect(codes({ tradeNameAr: null })).toEqual([]);
   });
 
-  it('checks the trade name as well as the legal name', () => {
-    const issues = check({ tradeNameAr: 'Al Maha Logistics Solutions' });
-    expect(issues.map((i) => i.code)).toContain('ARABIC_NAME_NOT_ARABIC');
+  it('reports it once, on the field that carries it', () => {
+    const issues = check({ tradeNameAr: 'Al Maha' });
+    expect(issues.filter((i) => i.code === 'ARABIC_NAME_NOT_ARABIC')).toHaveLength(1);
     expect(issues[0]?.path).toBe('tradeNameAr');
-  });
-
-  it('reports both when both are transliterated', () => {
-    const issues = check({ legalNameAr: 'Al Maha', tradeNameAr: 'Al Maha' });
-    expect(issues.filter((i) => i.code === 'ARABIC_NAME_NOT_ARABIC')).toHaveLength(2);
   });
 });
 
@@ -215,7 +209,7 @@ describe('a document that is not a trade licence', () => {
     const issues = check({
       ...rejected,
       licenceNumber: null,
-      legalNameEn: null,
+      tradeNameEn: null,
       issueDate: null,
       expiryDate: null,
       activities: [],
@@ -249,7 +243,7 @@ describe('identity fields on a document that claims to be a licence', () => {
   });
 
   it('reports every missing identity field, not just the first', () => {
-    const issues = check({ licenceNumber: null, legalNameEn: null, expiryDate: null });
+    const issues = check({ licenceNumber: null, tradeNameEn: null, expiryDate: null });
     expect(issues.filter((i) => i.code === 'MISSING_REQUIRED_FIELD')).toHaveLength(3);
   });
 

@@ -23,6 +23,13 @@ export const dynamic = 'force-dynamic';
 export function GET(): NextResponse {
   return NextResponse.json({
     status: 'ok',
+    // Which build is actually serving. Without this, "is the fix deployed?"
+    // is answered by guessing at response behaviour.
+    version: {
+      commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
+      branch: process.env.RAILWAY_GIT_BRANCH ?? 'local',
+      deployedAt: process.env.RAILWAY_DEPLOYMENT_ID ? undefined : 'dev',
+    },
     provider: getProvider().name,
     model: activeModel(),
     limits: {

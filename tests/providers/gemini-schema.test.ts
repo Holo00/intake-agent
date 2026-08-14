@@ -81,7 +81,7 @@ describe('the real trade licence schema', () => {
   it('marks every schema field as required, so the model cannot omit one', () => {
     // Optionality is expressed as nullable, never as absence — an absent field
     // and a field the document does not show are different failures.
-    expect(converted.required).toContain('legalNameAr');
-    expect(converted.properties?.legalNameAr?.nullable).toBe(true);
+    expect(converted.required).toContain('tradeNameAr');
+    expect(converted.properties?.tradeNameAr?.nullable).toBe(true);
   });
 });

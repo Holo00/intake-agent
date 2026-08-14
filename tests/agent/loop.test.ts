@@ -147,7 +147,7 @@ describe('an expired licence', () => {
 
   it('still returns the extracted record for the human reviewer', async () => {
     const result = await run('expired');
-    expect(result.record?.legalNameEn).toBe('Gulf Horizon Trading FZE');
+    expect(result.record?.tradeNameEn).toBe('Gulf Horizon Trading FZE');
   });
 });
 
@@ -207,10 +207,9 @@ describe('a document that is not a trade licence', () => {
     createStubProvider(() => ({
       isTradeLicence: false,
       licenceNumber: null,
-      legalNameEn: null,
-      legalNameAr: null,
       tradeNameEn: null,
       tradeNameAr: null,
+      licenceHolderEn: null,
       legalForm: null,
       managerName: null,
       issuingAuthority: null,

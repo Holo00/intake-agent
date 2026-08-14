@@ -199,6 +199,21 @@ Two things fall out of it that the original plan would not have produced:
 
 Measured, not assumed, is the whole point. The plan said the model would fail; it did not.
 
+**The same lesson arrived a second time, more expensively.** Adding a trade-name field alongside the
+entity name, after checking the schema against a real DIEZ licence, made `legalNameEn` required and
+the trade name optional. Handed a licence labelled "Trade Name", the model filled the trade name and
+left the required field null — so every clean read cost a correction attempt. Two rounds of
+increasingly emphatic field descriptions did not move it.
+
+The model was right both times. On a UAE licence the trade name (الاسم التجاري) is the field that is
+always printed; a separate licence holder is the occasional extra that some free zones add. The
+schema had the universal field optional and the optional one required. Inverting them fixed it on the
+first attempt and, on the same document, cut the run from 2 attempts to 1, 1828 tokens to 745, and
+12.5s to 5.0s.
+
+**Prompt wording cannot fix a data model that is wrong about the world.** When a model keeps making
+the same "mistake", the cheaper hypothesis is that the schema is wrong.
+
 ## 12. Two retry axes, kept apart
 
 `IntakeError.transient` existed for a while with nothing consuming it, which meant a `429` from the

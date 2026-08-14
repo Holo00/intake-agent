@@ -237,10 +237,7 @@ const activitiesSplit: Rule = (record) => {
  * to anyone who does not read Arabic, which is precisely why it is worth a rule.
  */
 const arabicNameIsArabic: Rule = (record) => {
-  const fields = [
-    ['legalNameAr', record.legalNameAr],
-    ['tradeNameAr', record.tradeNameAr],
-  ] as const;
+  const fields = [['tradeNameAr', record.tradeNameAr]] as const;
 
   return fields.flatMap(([path, value]) =>
     value !== null && !ARABIC_SCRIPT.test(value)
@@ -268,7 +265,7 @@ const arabicNameIsArabic: Rule = (record) => {
  */
 const IDENTITY_FIELDS = [
   ['licenceNumber', 'the licence number'],
-  ['legalNameEn', 'the name of the licensed entity'],
+  ['tradeNameEn', 'the trade name of the licensed entity'],
   ['issueDate', 'the issue date'],
   ['expiryDate', 'the expiry date'],
 ] as const;

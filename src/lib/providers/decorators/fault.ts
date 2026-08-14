@@ -54,7 +54,7 @@ export const FAULTS = {
       'Where the Arabic is hard to read, a model will often romanise the English name rather than return null. Invisible to a reviewer who does not read Arabic.',
     apply: (record: Record<string, unknown>) => ({
       ...record,
-      legalNameAr: typeof record.legalNameEn === 'string' ? record.legalNameEn : record.legalNameAr,
+      tradeNameAr: typeof record.tradeNameEn === 'string' ? record.tradeNameEn : record.tradeNameAr,
     }),
   },
 } as const;
