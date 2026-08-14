@@ -12,13 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose — the action reads `packageManager` from
+      # package.json, and pinning it in both places is an error, not a
+      # belt-and-braces. One source of truth for the toolchain.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
