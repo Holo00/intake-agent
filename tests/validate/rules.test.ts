@@ -1,0 +1,173 @@
+import { describe, expect, it } from 'vitest';
+import { applyRules } from '@/lib/validate/rules';
+import type { TradeLicence } from '@/lib/schema/trade-licence';
+
+/**
+ * Rules are pure functions of (record, now), so every case here is a fixed
+ * record at a fixed date. No network, no model, no clock.
+ */
+
+const NOW = new Date('2026-08-13T00:00:00Z');
+
+const valid: TradeLicence = {
+  licenceNumber: '784512',
+  legalNameEn: 'Al Maha Logistics Solutions L.L.C',
+  legalNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
+  tradeNameEn: 'Al Maha Logistics Solutions L.L.C',
+  tradeNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
+  legalForm: 'Limited Liability Company',
+  managerName: 'Yousef Abdulrahman Al Marzooqi',
+  issuingAuthority: 'Department of Economic Development - Dubai',
+  emirate: 'Dubai',
+  issueDate: '2026-01-15',
+  expiryDate: '2027-01-14',
+  establishmentDate: '2019-01-14',
+  activities: ['Land Freight Transport Services', 'Warehousing and Storage Services'],
+  registeredAddress: 'Office 1204, Al Shafar Tower, Al Barsha 1, Dubai',
+};
+
+const check = (overrides: Partial<TradeLicence> = {}) =>
+  applyRules({ ...valid, ...overrides }, { now: NOW });
+
+const codes = (overrides: Partial<TradeLicence> = {}) => check(overrides).map((i) => i.code);
+
+describe('a well-formed, in-date licence', () => {
+  it('raises no issues', () => {
+    expect(check()).toEqual([]);
+  });
+});
+
+describe('date coherence', () => {
+  it('rejects an expiry that precedes the issue date', () => {
+    expect(codes({ issueDate: '2026-06-01', expiryDate: '2026-01-01' })).toContain(
+      'EXPIRY_NOT_AFTER_ISSUE',
+    );
+  });
+
+  it('rejects an expiry equal to the issue date', () => {
+    expect(codes({ issueDate: '2026-06-01', expiryDate: '2026-06-01' })).toContain(
+      'EXPIRY_NOT_AFTER_ISSUE',
+    );
+  });
+
+  it('treats a transposed pair as an extraction fault, so it can be retried', () => {
+    const [issue] = check({ issueDate: '2026-06-01', expiryDate: '2026-01-01' });
+    expect(issue?.kind).toBe('extraction');
+    expect(issue?.hint).toBeDefined();
+  });
+
+  it('flags an issue date before the UAE existed', () => {
+    expect(codes({ issueDate: '1965-01-01', expiryDate: '1966-01-01' })).toContain(
+      'ISSUE_DATE_IMPLAUSIBLE',
+    );
+  });
+
+  it('flags a future issue date', () => {
+    expect(codes({ issueDate: '2027-01-01', expiryDate: '2027-12-31' })).toContain(
+      'ISSUE_DATE_IN_FUTURE',
+    );
+  });
+
+  it('warns on a term longer than any real licence', () => {
+    expect(codes({ issueDate: '2026-01-15', expiryDate: '2036-01-14' })).toContain(
+      'TERM_IMPLAUSIBLE',
+    );
+  });
+
+  it('warns when establishment postdates issue', () => {
+    expect(codes({ establishmentDate: '2026-06-01' })).toContain('ESTABLISHED_AFTER_ISSUE');
+  });
+});
+
+describe('expiry is a fact about the document, not a misreading', () => {
+  it('flags an expired licence', () => {
+    expect(codes({ issueDate: '2023-06-01', expiryDate: '2024-05-31' })).toContain(
+      'LICENCE_EXPIRED',
+    );
+  });
+
+  it('marks it `document` kind with no hint, so the loop will not retry it', () => {
+    const expired = check({ issueDate: '2023-06-01', expiryDate: '2024-05-31' }).find(
+      (i) => i.code === 'LICENCE_EXPIRED',
+    );
+    expect(expired?.kind).toBe('document');
+    expect(expired?.hint).toBeUndefined();
+  });
+
+  it('accepts a licence expiring today', () => {
+    expect(codes({ issueDate: '2025-08-13', expiryDate: '2026-08-13' })).not.toContain(
+      'LICENCE_EXPIRED',
+    );
+  });
+});
+
+describe('activities must arrive as a list', () => {
+  it('detects a numbered block returned as one joined string', () => {
+    expect(
+      codes({
+        activities: [
+          '1. Electromechanical Equipment Installation 2. Air Conditioning Contracting 3. Plumbing and Sanitary Installation Contracting',
+        ],
+      }),
+    ).toContain('ACTIVITIES_NOT_SPLIT');
+  });
+
+  it('detects a long comma-joined string', () => {
+    expect(
+      codes({
+        activities: [
+          'Land Freight Transport Services, Warehousing and Storage Services, Sea Freight Forwarding Brokers, Packaging Services',
+        ],
+      }),
+    ).toContain('ACTIVITIES_NOT_SPLIT');
+  });
+
+  it('leaves a legitimately comma-bearing single activity alone', () => {
+    expect(codes({ activities: ['Trading in building materials, tools and hardware'] })).toEqual([]);
+  });
+
+  it('warns on an empty list without failing the record', () => {
+    const issues = check({ activities: [] });
+    expect(issues.map((i) => i.code)).toContain('ACTIVITIES_EMPTY');
+    expect(issues.every((i) => i.severity === 'warning')).toBe(true);
+  });
+});
+
+describe('the Arabic name must be Arabic', () => {
+  it('rejects a transliteration', () => {
+    expect(codes({ legalNameAr: 'Al Maha Logistics Solutions' })).toContain(
+      'ARABIC_NAME_NOT_ARABIC',
+    );
+  });
+
+  it('accepts a genuine absence', () => {
+    expect(codes({ legalNameAr: null })).toEqual([]);
+  });
+
+  it('checks the trade name as well as the legal name', () => {
+    const issues = check({ tradeNameAr: 'Al Maha Logistics Solutions' });
+    expect(issues.map((i) => i.code)).toContain('ARABIC_NAME_NOT_ARABIC');
+    expect(issues[0]?.path).toBe('tradeNameAr');
+  });
+
+  it('reports both when both are transliterated', () => {
+    const issues = check({ legalNameAr: 'Al Maha', tradeNameAr: 'Al Maha' });
+    expect(issues.filter((i) => i.code === 'ARABIC_NAME_NOT_ARABIC')).toHaveLength(2);
+  });
+});
+
+describe('licence number shape', () => {
+  it('accepts a free-zone prefixed number', () => {
+    expect(codes({ licenceNumber: 'SHAMS-11029' })).toEqual([]);
+  });
+
+  it('accepts an Abu Dhabi CN number', () => {
+    expect(codes({ licenceNumber: 'CN-2094771' })).toEqual([]);
+  });
+
+  it('warns rather than errors on something unrecognisable', () => {
+    const issues = check({ licenceNumber: 'رقم الرخصة' });
+    expect(issues.map((i) => i.code)).toContain('LICENCE_NUMBER_SHAPE');
+    expect(issues.find((i) => i.code === 'LICENCE_NUMBER_SHAPE')?.severity).toBe('warning');
+  });
+});
