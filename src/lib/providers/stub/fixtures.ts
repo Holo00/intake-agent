@@ -86,6 +86,29 @@ const awkwardBase: TradeLicence = {
   registeredAddress: 'Unit 3, Mussafah Industrial Area M-14, Abu Dhabi',
 };
 
+/**
+ * What the model returns for a document that is not a licence at all: a
+ * rejection and nothing else. Every field null, because inventing one would be
+ * exactly the failure `isTradeLicence` exists to prevent.
+ */
+const rejected: TradeLicence = {
+  isTradeLicence: false,
+  licenceNumber: null,
+  legalNameEn: null,
+  legalNameAr: null,
+  tradeNameEn: null,
+  tradeNameAr: null,
+  legalForm: null,
+  managerName: null,
+  issuingAuthority: null,
+  emirate: null,
+  issueDate: null,
+  expiryDate: null,
+  establishmentDate: null,
+  activities: [],
+  registeredAddress: null,
+};
+
 export const STUB_FIXTURES: Record<string, StubFixture> = {
   /** Reads cleanly. One attempt, no issues. */
   clean: { firstPass: clean },
@@ -108,6 +131,16 @@ export const STUB_FIXTURES: Record<string, StubFixture> = {
    * vision model buys over a text-extraction step that would return nothing.
    */
   scan: { firstPass: awkwardBase },
+
+  /**
+   * A supplier invoice. Deliberately the hard rejection: it carries a company
+   * name in both scripts, a UAE address, a date and a reference number — every
+   * signal a naive classifier might key on except the right one.
+   */
+  'not-a-licence': { firstPass: rejected },
+
+  /** The blank back of a duplex scan. The easy rejection, and just as common. */
+  'blank-scan': { firstPass: rejected },
 };
 
 /** Returned for any document the stub has no fixture for. */

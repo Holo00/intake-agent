@@ -5,8 +5,9 @@ import { IntakeDemo, type FaultOption, type Sample } from './components/IntakeDe
 
 export const dynamic = 'force-dynamic';
 
-const samples: Sample[] = manifest.map(({ id, file, label, description }) => ({
+const samples: Sample[] = manifest.map(({ id, group, file, label, description }) => ({
   id,
+  group: group as Sample['group'],
   file,
   label,
   description,
@@ -20,35 +21,36 @@ const faults: FaultOption[] = Object.entries(FAULTS).map(([name, { label, detail
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-12 sm:py-16">
-      <header className="space-y-4 border-b border-line pb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Document intake agent</h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
+    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-10">
+      <header className="space-y-2.5 border-b border-line pb-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">Document intake agent</h1>
+          <div className="flex flex-wrap gap-x-4 font-mono text-[10px] text-muted">
+            <span>provider {config.provider}</span>
+            <span>model {activeModel()}</span>
+            <span>max attempts {config.MAX_ATTEMPTS}</span>
+            <span>timeout {config.EXTRACTION_TIMEOUT_MS}ms</span>
+          </div>
+        </div>
+        <p className="max-w-3xl text-[13px] leading-snug text-muted">
           Reads a UAE trade licence, extracts structured fields against a typed schema, validates
           them, and — when validation fails — hands the failures back to the model and tries again.
-          Bounded at {config.MAX_ATTEMPTS} attempts, then it stops and asks for a human.
+          Bounded at {config.MAX_ATTEMPTS} attempts, then it stops and asks for a human.{' '}
+          <span className="text-foreground">
+            Anyone can get a model to return JSON; this is about what happens when it returns the{' '}
+            <em>wrong</em> JSON.
+          </span>
         </p>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Anyone can get a model to return JSON. This shows what happens when it returns the{' '}
-          <em>wrong</em> JSON.
-        </p>
-        <div className="flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11px] text-muted">
-          <span>provider {config.provider}</span>
-          <span>model {activeModel()}</span>
-          <span>max attempts {config.MAX_ATTEMPTS}</span>
-          <span>timeout {config.EXTRACTION_TIMEOUT_MS}ms</span>
-        </div>
         {config.provider === 'stub' && (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-relaxed">
-            Running on the <strong>stub provider</strong> — canned responses, no model call. This is
-            the zero-setup mode, so the loop, the validation rules and the correction step are all
-            real; only the model is not. Set <code className="font-mono">LLM_PROVIDER=gemini</code>{' '}
-            with an API key to run it live.
+          <p className="rounded border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-[11px] leading-snug">
+            <strong>Stub provider</strong> — canned responses, no model call. The loop, the rules and
+            the correction step are all real; only the model is not. Set{' '}
+            <code className="font-mono">LLM_PROVIDER=gemini</code> with a key to run it live.
           </p>
         )}
       </header>
 
-      <div className="py-8">
+      <div className="py-6">
         <IntakeDemo samples={samples} faults={faults} />
       </div>
 

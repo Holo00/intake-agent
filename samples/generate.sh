@@ -23,17 +23,17 @@ command -v google-chrome >/dev/null 2>&1 || {
   exit 1
 }
 
-# id|label|description — description is shown on the sample buttons in the UI.
+# id|group|label|description — description is shown on the sample buttons in the UI.
 samples=(
-  "clean|Clean licence|Valid Dubai DED licence. Reads and validates on the first attempt."
-  "expired|Expired licence|Extraction is perfect; the licence lapsed in 2024. Reported, never retried."
-  "awkward|Awkward layout|Activities set as prose, seal over the text, Abu Dhabi CN format."
+  "clean|licence|Clean licence|Valid Dubai DED licence. Reads and validates on the first attempt."
+  "expired|licence|Expired licence|Extraction is perfect; the licence lapsed in 2024. Reported, never retried."
+  "awkward|licence|Awkward layout|Activities set as prose, seal over the text, Abu Dhabi CN format."
 )
 
 entries=()
 
 for spec in "${samples[@]}"; do
-  IFS='|' read -r id label description <<<"$spec"
+  IFS='|' read -r id group label description <<<"$spec"
   src="samples/templates/$id.html"
   dest="$out_dir/$id.pdf"
 
@@ -45,8 +45,8 @@ for spec in "${samples[@]}"; do
   sha=$(sha256sum "$dest" | cut -d' ' -f1)
   bytes=$(stat -c%s "$dest")
 
-  entries+=("$(printf '{"id":"%s","file":"/samples/%s.pdf","label":"%s","description":"%s","sha256":"%s","bytes":%s}' \
-    "$id" "$id" "$label" "$description" "$sha" "$bytes")")
+  entries+=("$(printf '{"id":"%s","group":"%s","file":"/samples/%s.pdf","label":"%s","description":"%s","sha256":"%s","bytes":%s}' \
+    "$id" "$group" "$id" "$label" "$description" "$sha" "$bytes")")
 
   echo "  $dest  ($bytes bytes, ${sha:0:12}…)"
 done
@@ -60,8 +60,35 @@ python3 samples/degrade.py "$out_dir/awkward.pdf" "$scan_dest"
 
 scan_sha=$(sha256sum "$scan_dest" | cut -d' ' -f1)
 scan_bytes=$(stat -c%s "$scan_dest")
-entries+=("$(printf '{"id":"scan","file":"/samples/scan.jpg","label":"Photographed copy","description":"A phone photo of the same licence: skewed, glare, noise, heavy JPEG. No OCR step — the bytes go to the model.","sha256":"%s","bytes":%s}' \
+entries+=("$(printf '{"id":"scan","group":"licence","file":"/samples/scan.jpg","label":"Photographed copy","description":"A phone photo of the same licence: skewed, glare, noise, heavy JPEG. No OCR step — the bytes go to the model.","sha256":"%s","bytes":%s}' \
   "$scan_sha" "$scan_bytes")")
+
+# Documents that are not licences at all — the commonest thing an intake
+# endpoint receives after the correct one. Rejected outright, without the loop
+# spending a correction attempt.
+rejects=(
+  "not-a-licence|invoice|Tax invoice|A supplier invoice, not a licence. Carries a company name in both scripts, a UAE address and a date — every signal but the right one."
+  "blank-scan|blank-scan|Blank page|The blank back of a duplex scan. The other half of what an intake inbox actually receives."
+)
+
+for spec in "${rejects[@]}"; do
+  IFS='|' read -r id template label description <<<"$spec"
+  src="samples/templates/$template.html"
+  dest="$out_dir/$id.pdf"
+
+  [ -f "$src" ] || { echo "Missing template: $src" >&2; exit 1; }
+
+  google-chrome --headless=new --disable-gpu --no-pdf-header-footer \
+    --print-to-pdf="$dest" "file://$(realpath "$src")" >/dev/null 2>&1
+
+  sha=$(sha256sum "$dest" | cut -d' ' -f1)
+  bytes=$(stat -c%s "$dest")
+
+  entries+=("$(printf '{"id":"%s","group":"reject","file":"/samples/%s.pdf","label":"%s","description":"%s","sha256":"%s","bytes":%s}' \
+    "$id" "$id" "$label" "$description" "$sha" "$bytes")")
+
+  echo "  $dest  ($bytes bytes, ${sha:0:12}…)"
+done
 
 printf '[\n  %s\n]\n' "$(IFS=$',\n  '; echo "${entries[*]}")" >"$manifest"
 

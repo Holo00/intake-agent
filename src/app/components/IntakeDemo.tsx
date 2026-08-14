@@ -8,6 +8,7 @@ import { ResultPanel } from './ResultPanel';
 
 export interface Sample {
   id: string;
+  group: 'licence' | 'reject';
   file: string;
   label: string;
   description: string;
@@ -31,9 +32,24 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
   const [fault, setFault] = useState('');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
 
-  const submit = useCallback(async (file: File, source: string, faultName: string) => {
+  /**
+   * The controls are taller than the viewport, so without this the result
+   * lands below the fold and the app looks like it did nothing. Scrolling on
+   * `working` rather than on `done` means the spinner is what you land on —
+   * feedback arrives immediately instead of after the model call returns.
+   */
+  const revealResult = useCallback(() => {
+    requestAnimationFrame(() =>
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }, []);
+
+  const submit = useCallback(
+    async (file: File, source: string, faultName: string) => {
     setState({ phase: 'working', source });
+    revealResult();
 
     const body = new FormData();
     body.append('file', file);
@@ -72,18 +88,21 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
         // a failed extraction.
       }
     }
-  }, []);
+    },
+    [revealResult],
+  );
 
   /** Sample buttons fetch the file and post it through the same route as an upload. */
   const runSample = useCallback(
     async (sample: Sample) => {
       setState({ phase: 'working', source: sample.label });
+      revealResult();
       const response = await fetch(sample.file);
       const blob = await response.blob();
       const name = sample.file.split('/').pop() ?? sample.id;
       await submit(new File([blob], name, { type: blob.type }), sample.label, fault);
     },
-    [submit, fault],
+    [submit, fault, revealResult],
   );
 
   /**
@@ -121,34 +140,21 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
   const activeFault = faults.find((f) => f.name === fault);
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Try a sample</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {samples.map((sample) => (
-            <div key={sample.id} className="flex flex-col rounded-lg border border-line bg-surface">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => runSample(sample)}
-                className="flex-1 p-3.5 text-left transition hover:bg-foreground/4 disabled:opacity-50"
-              >
-                <span className="block text-sm font-medium">{sample.label}</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted">
-                  {sample.description}
-                </span>
-              </button>
-              <a
-                href={sample.file}
-                download
-                className="border-t border-line px-3.5 py-2 text-[11px] text-muted transition hover:text-foreground"
-              >
-                Download it and upload it yourself ↓
-              </a>
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="space-y-6">
+      <SampleGroup
+        title="Try a licence"
+        samples={samples.filter((s) => s.group === 'licence')}
+        busy={busy}
+        onRun={runSample}
+      />
+
+      <SampleGroup
+        title="Or something that is not a licence"
+        blurb="The commonest thing an intake endpoint receives after the correct document. Both are rejected outright, in one attempt — re-reading an invoice does not turn it into a licence."
+        samples={samples.filter((s) => s.group === 'reject')}
+        busy={busy}
+        onRun={runSample}
+      />
 
       <FaultPicker faults={faults} value={fault} onChange={setFault} active={activeFault} />
 
@@ -166,7 +172,7 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
             const file = e.dataTransfer.files[0];
             if (file) void submit(file, file.name, fault);
           }}
-          className={`rounded-lg border border-dashed p-8 text-center transition ${
+          className={`rounded-lg border border-dashed p-5 text-center transition ${
             dragging ? 'border-foreground bg-surface' : 'border-line'
           }`}
         >
@@ -197,7 +203,7 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
         </div>
       </section>
 
-      <section aria-live="polite" className="min-h-8">
+      <section ref={resultRef} aria-live="polite" className="scroll-mt-6 min-h-8">
         {state.phase === 'working' && (
           <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4 text-sm">
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted border-t-transparent" />
@@ -236,6 +242,59 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
   );
 }
 
+function SampleGroup({
+  title,
+  blurb,
+  samples,
+  busy,
+  onRun,
+}: {
+  title: string;
+  blurb?: string;
+  samples: Sample[];
+  busy: boolean;
+  onRun: (sample: Sample) => void;
+}) {
+  if (samples.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {blurb && <p className="max-w-2xl text-xs leading-relaxed text-muted">{blurb}</p>}
+      </div>
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {samples.map((sample) => (
+          <div
+            key={sample.id}
+            className="group flex flex-col rounded-lg border border-line bg-surface"
+          >
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onRun(sample)}
+              className="flex-1 rounded-t-lg p-3 text-left transition hover:bg-foreground/4 disabled:opacity-50"
+            >
+              <span className="block text-[13px] font-medium">{sample.label}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted">
+                {sample.description}
+              </span>
+            </button>
+            <a
+              href={sample.file}
+              download
+              title="Download this file and upload it yourself, through the same route"
+              className="border-t border-line px-3 py-1.5 text-[10px] text-muted/70 transition hover:text-foreground"
+            >
+              download ↓
+            </a>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
  * The correction loop only runs when validation fails, and a current model
  * reads these specimens correctly — including the photographed one. Rather than
@@ -253,15 +312,24 @@ function FaultPicker({
   active: FaultOption | undefined;
 }) {
   return (
-    <section className="space-y-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-4">
+    <section className="space-y-2.5 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3.5">
       <div className="space-y-1">
         <h2 className="text-sm font-semibold">Inject a fault — see the agent correct itself</h2>
-        <p className="text-xs leading-relaxed text-muted">
-          A current model reads every sample above correctly, so the correction loop never fires.
-          That is the right outcome, and a demo that relied on tricking the model into failing would
-          stop working the week the model improved. Instead the <strong>first</strong> attempt&apos;s
-          output is corrupted on the way back from the real provider. Everything after that is
-          genuine: real validation, real hints, a real second call, a real corrected record.
+        <p className="text-xs leading-snug text-muted">
+          Corrupts the <strong>first</strong> attempt on the way back from the real provider, then
+          picks any sample above. Everything after the corruption is genuine.{' '}
+          <details className="mt-1 inline">
+            <summary className="cursor-pointer underline underline-offset-2 hover:text-foreground">
+              why inject rather than find a document that breaks it?
+            </summary>
+            <span className="mt-1 block leading-relaxed">
+              A current model reads every sample above correctly, including the photograph, so the
+              correction loop never fires — which is the right outcome. Engineering a document to
+              defeat a frontier model is fragile: it stops working the week the model improves, and
+              a reviewer who knows these systems would see a demo tuned to make a model fail. The
+              loop is insurance, and this is how you exercise insurance on purpose.
+            </span>
+          </details>
         </p>
       </div>
 

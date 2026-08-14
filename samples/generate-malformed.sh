@@ -91,26 +91,5 @@ PY
   echo "  $out_dir/$id.pdf  → expects $expected"
 done
 
-# Wrong-document specimens. These are not defective licences — they are not
-# licences at all, which is the commonest thing a real intake endpoint receives
-# after the correct document. Both must be rejected outright, without the loop
-# spending a correction attempt on them.
-wrong_documents=(
-  "not-a-licence|invoice|NOT_A_TRADE_LICENCE"
-  "blank-scan|blank-scan|NOT_A_TRADE_LICENCE"
-)
-
-for spec in "${wrong_documents[@]}"; do
-  IFS='|' read -r id template expected <<<"$spec"
-  src="samples/templates/$template.html"
-  [ -f "$src" ] || { echo "Missing template: $src" >&2; exit 1; }
-
-  google-chrome --headless=new --disable-gpu --no-pdf-header-footer \
-    --print-to-pdf="$out_dir/$id.pdf" "file://$(realpath "$src")" >/dev/null 2>&1
-
-  manifest_entries+=("$(printf '{"id":"%s","file":"%s.pdf","expect":"%s"}' "$id" "$id" "$expected")")
-  echo "  $out_dir/$id.pdf  → expects $expected"
-done
-
 printf '[\n  %s\n]\n' "$(IFS=$',\n  '; echo "${manifest_entries[*]}")" >"$out_dir/expectations.json"
 echo "Wrote $out_dir/expectations.json"
