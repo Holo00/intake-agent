@@ -21,7 +21,7 @@ const faults: FaultOption[] = Object.entries(FAULTS).map(([name, { label, detail
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:py-10">
       <header className="space-y-2.5 border-b border-line pb-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <h1 className="text-xl font-semibold tracking-tight">Document intake agent</h1>

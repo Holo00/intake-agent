@@ -140,104 +140,128 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
   const activeFault = faults.find((f) => f.name === fault);
 
   return (
-    <div className="space-y-6">
-      <SampleGroup
-        title="Try a licence"
-        samples={samples.filter((s) => s.group === 'licence')}
-        busy={busy}
-        onRun={runSample}
-      />
+    /*
+     * Controls left, results right, and the controls stay put.
+     *
+     * Stacked vertically the control block ran past the fold, so every result
+     * arrived off-screen and the app looked inert. A sticky sidebar fixes that
+     * at the source rather than papering over it with a scroll: on a laptop
+     * you click a sample and the result appears beside it, no scrolling at all.
+     * The wide column goes to the results because that is what is actually
+     * wide — record tables, attempt diffs, raw JSON.
+     */
+    <div className="lg:grid lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <aside className="space-y-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
+        <SampleGroup
+          title="Try a licence"
+          samples={samples.filter((s) => s.group === 'licence')}
+          busy={busy}
+          onRun={runSample}
+        />
 
-      <SampleGroup
-        title="Or something that is not a licence"
-        blurb="The commonest thing an intake endpoint receives after the correct document. Both are rejected outright, in one attempt — re-reading an invoice does not turn it into a licence."
-        samples={samples.filter((s) => s.group === 'reject')}
-        busy={busy}
-        onRun={runSample}
-      />
+        <SampleGroup
+          title="Not a licence"
+          blurb="The commonest thing an intake endpoint receives after the correct document. Rejected in one attempt."
+          samples={samples.filter((s) => s.group === 'reject')}
+          busy={busy}
+          onRun={runSample}
+        />
 
-      <FaultPicker faults={faults} value={fault} onChange={setFault} active={activeFault} />
+        <FaultPicker faults={faults} value={fault} onChange={setFault} active={activeFault} />
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Or drop your own</h2>
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            const file = e.dataTransfer.files[0];
-            if (file) void submit(file, file.name, fault);
-          }}
-          className={`rounded-lg border border-dashed p-5 text-center transition ${
-            dragging ? 'border-foreground bg-surface' : 'border-line'
-          }`}
-        >
-          <p className="text-sm text-muted">
-            Drop a PDF or image here, or{' '}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => inputRef.current?.click()}
-              className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-            >
-              choose a file
-            </button>
-            .
-          </p>
-          <p className="mt-1.5 text-xs text-muted/70">PDF, PNG, JPEG or WebP · up to 10MB</p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void submit(file, file.name, fault);
-              e.target.value = '';
+      </aside>
+
+      <div className="mt-8 space-y-6 lg:mt-0">
+        <section className="space-y-2">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
             }}
-          />
-        </div>
-      </section>
-
-      <section ref={resultRef} aria-live="polite" className="scroll-mt-6 min-h-8">
-        {state.phase === 'working' && (
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4 text-sm">
-            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted border-t-transparent" />
-            Reading {state.source}…
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files[0];
+              if (file) void submit(file, file.name, fault);
+            }}
+            className={`rounded-lg border border-dashed p-5 text-center transition ${
+              dragging ? 'border-foreground bg-surface' : 'border-line'
+            }`}
+          >
+            <p className="text-sm text-muted">
+              Or drop your own document here —{' '}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => inputRef.current?.click()}
+                className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+              >
+                choose a file
+              </button>
+            </p>
+            <p className="mt-1 text-[11px] text-muted/70">
+              PDF, PNG, JPEG or WebP · up to 10MB · nothing is stored
+            </p>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void submit(file, file.name, fault);
+                e.target.value = '';
+              }}
+            />
           </div>
-        )}
+        </section>
 
-        {state.phase === 'failed' && (
-          <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm">
-            <code className="font-mono text-xs font-semibold">{state.code}</code>
-            <p>{state.message}</p>
-            {state.code === 'PROVIDER_RATE_LIMITED' && (
-              <p className="text-xs leading-relaxed text-muted">
-                This instance runs on Gemini&apos;s free tier, which allows 20 model calls per day.
-                That allowance is spent for today — nothing is broken, and what you are seeing is the
-                error path doing its job: two jittered retries, then a clean 429 with a stable code
-                rather than a stack trace. Everything except the model call is exercised by the 80
-                offline tests in the repo, which need no key. Try again tomorrow, or clone it and run
-                it with <code className="font-mono">LLM_PROVIDER=stub</code> to see the full loop
-                immediately.
+        <section ref={resultRef} aria-live="polite" className="scroll-mt-6">
+          {state.phase === 'idle' && (
+            <div className="rounded-lg border border-dashed border-line p-8 text-center">
+              <p className="text-sm text-muted">Pick a document on the left to run the agent.</p>
+              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-muted/70">
+                You will see the validated record, every attempt it took to get there, and — when a
+                correction happened — a diff of exactly what changed between them.
               </p>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {state.phase === 'done' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold">Result — {state.source}</h2>
-            <ResultPanel result={state.result} />
-          </div>
-        )}
-      </section>
+          {state.phase === 'working' && (
+            <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4 text-sm">
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted border-t-transparent" />
+              Reading {state.source}…
+            </div>
+          )}
 
-      <MetricsPanel metrics={metrics} />
+          {state.phase === 'failed' && (
+            <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm">
+              <code className="font-mono text-xs font-semibold">{state.code}</code>
+              <p>{state.message}</p>
+              {state.code === 'PROVIDER_RATE_LIMITED' && (
+                <p className="text-xs leading-relaxed text-muted">
+                  This instance runs on Gemini&apos;s free tier, which allows 20 model calls per day.
+                  That allowance is spent for today — nothing is broken, and what you are seeing is
+                  the error path doing its job: jittered retries honouring the delay the provider
+                  asked for, then a clean 429 with a stable code rather than a stack trace.
+                  Everything except the model call is exercised by the offline tests in the repo,
+                  which need no key.
+                </p>
+              )}
+            </div>
+          )}
+
+          {state.phase === 'done' && (
+            <div className="space-y-4">
+              <h2 className="text-sm font-semibold">Result — {state.source}</h2>
+              <ResultPanel result={state.result} />
+            </div>
+          )}
+        </section>
+
+        <MetricsPanel metrics={metrics} />
+      </div>
     </div>
   );
 }
@@ -258,12 +282,12 @@ function SampleGroup({
   if (samples.length === 0) return null;
 
   return (
-    <section className="space-y-3">
-      <div className="space-y-1">
+    <section className="space-y-2">
+      <div className="space-y-0.5">
         <h2 className="text-sm font-semibold">{title}</h2>
-        {blurb && <p className="max-w-2xl text-xs leading-relaxed text-muted">{blurb}</p>}
+        {blurb && <p className="text-[11px] leading-snug text-muted">{blurb}</p>}
       </div>
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
         {samples.map((sample) => (
           <div
             key={sample.id}
@@ -315,10 +339,17 @@ function FaultPicker({
     <section className="space-y-2.5 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3.5">
       <div className="space-y-1">
         <h2 className="text-sm font-semibold">Inject a fault — see the agent correct itself</h2>
-        <p className="text-xs leading-snug text-muted">
-          Corrupts the <strong>first</strong> attempt on the way back from the real provider, then
-          picks any sample above. Everything after the corruption is genuine.{' '}
-          <details className="mt-1 inline">
+        {/*
+          A <details> may not live inside a <p>: the parser closes the paragraph
+          before it, so the browser's DOM stops matching the server-rendered
+          HTML and React throws a hydration error. Siblings inside a <div>.
+        */}
+        <div className="space-y-1 text-xs leading-snug text-muted">
+          <p>
+            Corrupts the <strong>first</strong> attempt on the way back from the real provider, then
+            pick any sample. Everything after the corruption is genuine.
+          </p>
+          <details>
             <summary className="cursor-pointer underline underline-offset-2 hover:text-foreground">
               why inject rather than find a document that breaks it?
             </summary>
@@ -330,7 +361,7 @@ function FaultPicker({
               loop is insurance, and this is how you exercise insurance on purpose.
             </span>
           </details>
-        </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
