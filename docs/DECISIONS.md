@@ -141,7 +141,7 @@ Five runtime dependencies in total, three of which are the framework itself: `ne
 
 No LangChain, no LlamaIndex. The provider SDK directly.
 
-The whole agent loop is ~90 lines in [`run.ts`](../src/lib/agent/run.ts). A framework would add a
+The whole agent loop is one function in [`run.ts`](../src/lib/agent/run.ts) — about 125 lines of code. A framework would add a
 dependency, an abstraction to learn, and a layer between me and the failure modes that matter here —
 in exchange for nothing this build needs.
 
