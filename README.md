@@ -190,6 +190,16 @@ short-circuits every other rule, because one clear reason beats eleven symptoms 
 - **Fault injection as a decorator** over the provider interface, so the failure path can be
   exercised on demand against the real model rather than hoped for.
 
+## Deploying it
+
+[`railway.json`](railway.json) pins the build and start commands, and points Railway's healthcheck at
+`/api/health` — which reports the active provider and model rather than a bare 200, so a deploy that
+comes up with the wrong configuration fails the check instead of serving quietly.
+
+`next start` already honours `$PORT` and binds all interfaces, so nothing else is needed. Set
+`LLM_PROVIDER=gemini` and `GEMINI_API_KEY` as service variables; without them the instance serves the
+stub, and the page says so.
+
 ## Deliberately out of scope
 
 Auth, users, multi-tenancy, a database, queues, file persistence, more than one document type, and
