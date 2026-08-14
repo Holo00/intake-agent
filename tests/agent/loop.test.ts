@@ -240,3 +240,33 @@ describe('a document that is not a trade licence', () => {
     expect(result.record?.isTradeLicence).toBe(false);
   });
 });
+
+describe('a document the stub has never seen', () => {
+  /**
+   * Regression. This returned a placeholder record with isTradeLicence: true,
+   * so a corrupt file — or a reviewer's own document dropped into stub mode —
+   * came back `status: valid`. A demo whose argument is that plausible JSON is
+   * not a correct record cannot itself do that.
+   */
+  it('declines rather than inventing a record', async () => {
+    await expect(
+      runIntake({
+        provider: createStubProvider(),
+        document: { bytes: Buffer.from('not a document at all'), mime: 'application/pdf' },
+        requestId: 'unknown-doc',
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: 'STUB_NO_FIXTURE' });
+  });
+
+  it('says what to do about it rather than just failing', async () => {
+    await expect(
+      runIntake({
+        provider: createStubProvider(),
+        document: { bytes: Buffer.from('nope'), mime: 'application/pdf' },
+        requestId: 'unknown-doc-2',
+        now: NOW,
+      }),
+    ).rejects.toThrow(/LLM_PROVIDER=gemini/);
+  });
+});

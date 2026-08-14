@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import manifest from '@/../public/samples/manifest.json';
-import { STUB_FIXTURES, STUB_UNKNOWN_DOCUMENT, type StubFixture } from './fixtures';
+import { STUB_FIXTURES, stubCannotRead, type StubFixture } from './fixtures';
 import type { ExtractionProvider, ExtractionRequest, ExtractionResponse } from '../types';
 
 /**
@@ -27,7 +27,7 @@ export function fixtureResolver(request: ExtractionRequest): unknown {
   const id = idBySha.get(sha);
   const fixture: StubFixture | undefined = id ? STUB_FIXTURES[id] : undefined;
 
-  if (!fixture) return STUB_UNKNOWN_DOCUMENT;
+  if (!fixture) stubCannotRead();
 
   return request.feedback ? (fixture.corrected ?? fixture.firstPass) : fixture.firstPass;
 }

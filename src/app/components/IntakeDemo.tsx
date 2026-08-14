@@ -239,7 +239,13 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
             <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm">
               <code className="font-mono text-xs font-semibold">{state.code}</code>
               <p>{state.message}</p>
-              {state.code === 'PROVIDER_RATE_LIMITED' && (
+              {state.code === 'STUB_NO_FIXTURE' && (
+              <p className="text-xs leading-relaxed text-muted">
+                The sample buttons above still work — they are the documents this mode has canned
+                responses for. Everything except the model call is real either way.
+              </p>
+            )}
+            {state.code === 'PROVIDER_RATE_LIMITED' && (
                 <p className="text-xs leading-relaxed text-muted">
                   This instance runs on Gemini&apos;s free tier, which allows 20 model calls per day.
                   That allowance is spent for today — nothing is broken, and what you are seeing is

@@ -73,9 +73,16 @@ Schema — it rejects `$schema` and `additionalProperties`, and expresses nullab
 `nullable: true` where JSON Schema uses `anyOf: [T, null]`. That conversion lives in
 [`gemini/schema.ts`](../src/lib/providers/gemini/schema.ts) and is unit-tested without a model call.
 
-**On Claude:** adding it is one file implementing one interface. It is deliberately not in the repo,
-because an adapter that has never been executed is a liability rather than a credential — I would
-rather ship one provider that demonstrably works than two where the reviewer cannot tell which.
+**On Claude:** adding it is one file implementing one interface, and the interface exists precisely so
+that is true. It is not in the repo for a plainer reason: this is a **public** endpoint with a link
+anyone can click, and Claude has no free tier. Funding an open demo on a metered API means either
+capping it so low it fails for most visitors, or accepting unbounded spend on traffic I do not
+control. Gemini's free tier absorbs that; the choice is about who pays for a public URL, not about
+the model.
+
+The corollary is that swapping is genuinely an env var and one file — which is the claim the provider
+boundary exists to make, and `providers/stub/` already proves the boundary holds with a second
+implementation.
 
 ## 5. Validation issues are split into `extraction` and `document`
 

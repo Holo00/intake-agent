@@ -17,6 +17,7 @@ export type IntakeErrorCode =
   | 'UNSUPPORTED_MEDIA_TYPE'
   | 'PAYLOAD_TOO_LARGE'
   | 'NO_DOCUMENT'
+  | 'STUB_NO_FIXTURE'
   | 'INTERNAL';
 
 const HTTP_STATUS: Record<IntakeErrorCode, number> = {
@@ -30,6 +31,7 @@ const HTTP_STATUS: Record<IntakeErrorCode, number> = {
   UNSUPPORTED_MEDIA_TYPE: 415,
   PAYLOAD_TOO_LARGE: 413,
   NO_DOCUMENT: 400,
+  STUB_NO_FIXTURE: 501, // The instance is configured without a model, not broken.
   INTERNAL: 500,
 };
 

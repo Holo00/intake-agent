@@ -136,7 +136,9 @@ model has to map onto field names itself.
 **4. A provider interface with two real implementations.** Not speculative abstraction — the adapter
 earns its place immediately, because Gemini's `responseSchema` is an OpenAPI subset that rejects
 `$schema`/`additionalProperties` and spells nullability differently from JSON Schema. That conversion
-is isolated and unit-tested without a model call.
+is isolated and unit-tested without a model call. **This instance runs Gemini because the demo is a
+public URL and Gemini has a free tier** — on a metered API an open endpoint is either capped so low
+it fails for most visitors or an unbounded bill. Swapping is one file behind the interface.
 
 **5. Validation issues are split into `extraction` and `document`, and only `extraction` triggers a
 retry.** A misread date is worth another look; an expired licence is not, and an invoice does not

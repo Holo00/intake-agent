@@ -1,3 +1,4 @@
+import { IntakeError } from '@/lib/errors';
 import type { TradeLicence } from '@/lib/schema/trade-licence';
 
 /**
@@ -143,12 +144,25 @@ export const STUB_FIXTURES: Record<string, StubFixture> = {
   'blank-scan': { firstPass: rejected },
 };
 
-/** Returned for any document the stub has no fixture for. */
-export const STUB_UNKNOWN_DOCUMENT: TradeLicence = {
-  ...clean,
-  isTradeLicence: true,
-  licenceNumber: '000000',
-  legalNameEn: 'Unrecognised Document (stub provider)',
-  legalNameAr: null,
-  activities: ['Stub provider: no fixture for this document'],
-};
+/**
+ * There is no fixture for this document, and the stub must say so rather than
+ * answer anyway.
+ *
+ * This previously returned a placeholder record with `isTradeLicence: true`, so
+ * anything unrecognised — a corrupt file, a reviewer's own document, random
+ * bytes — came back `status: valid`. A demo arguing that plausible JSON is not
+ * the same as a correct record cannot hand back a clean record for a document
+ * it never read.
+ *
+ * Returning a *rejection* would be no better: it would tell someone who dropped
+ * a genuine licence into stub mode that it is not one, which is simply false.
+ *
+ * The stub has no model. It cannot classify an unfamiliar document either way,
+ * and the only honest answer is to decline and say what to do about it.
+ */
+export function stubCannotRead(): never {
+  throw new IntakeError(
+    'STUB_NO_FIXTURE',
+    'This instance is running the stub provider, which has canned responses for the built-in samples only. It has no model, so it cannot read a document it has not seen. Set LLM_PROVIDER=gemini with an API key to extract from your own documents.',
+  );
+}
