@@ -165,9 +165,33 @@ describe('licence number shape', () => {
     expect(codes({ licenceNumber: 'CN-2094771' })).toEqual([]);
   });
 
-  it('warns rather than errors on something unrecognisable', () => {
-    const issues = check({ licenceNumber: 'رقم الرخصة' });
+  it('warns when the label came along with the number', () => {
+    // A real miss: the model returns the whole cell rather than the value.
+    const issues = check({ licenceNumber: 'License No. 784512' });
     expect(issues.map((i) => i.code)).toContain('LICENCE_NUMBER_SHAPE');
     expect(issues.find((i) => i.code === 'LICENCE_NUMBER_SHAPE')?.severity).toBe('warning');
+  });
+
+  it('warns on too few digits to be a licence number', () => {
+    expect(codes({ licenceNumber: '12' })).toContain('LICENCE_NUMBER_SHAPE');
+  });
+
+  /**
+   * Found by a live specimen whose number was illegible: the model correctly
+   * returned "N/A" and the record passed as `valid`, because a warning does not
+   * block. A record that cannot say which licence it describes is not fit to
+   * auto-approve.
+   */
+  it('errors when there are no digits at all, so the record cannot auto-approve', () => {
+    const issues = check({ licenceNumber: 'N/A' });
+    const missing = issues.find((i) => i.code === 'LICENCE_NUMBER_MISSING');
+
+    expect(missing?.severity).toBe('error');
+    expect(missing?.kind).toBe('extraction');
+    expect(issues.map((i) => i.code)).not.toContain('LICENCE_NUMBER_SHAPE');
+  });
+
+  it('hints against returning a placeholder, since that is what the model did', () => {
+    expect(check({ licenceNumber: 'N/A' })[0]?.hint).toMatch(/never return a placeholder/i);
   });
 });

@@ -46,6 +46,16 @@ variants=(
   "established-after-issue|661206|01/06/2029|15/01/2026|14/01/2027|rows|ESTABLISHED_AFTER_ISSUE"
   "implausible-term|661207|12/03/2018|15/01/2026|14/01/2044|rows|TERM_IMPLAUSIBLE"
   "no-activities|661208|12/03/2018|15/01/2026|14/01/2027|none|ACTIVITIES_EMPTY"
+
+  # A year misread as Gregorian when it was Hijri, or simply mis-keyed at the
+  # issuer. Predates the UAE, so no licence can carry it.
+  "issue-date-impossible|661209|12/03/1960|15/01/1965|14/01/1966|rows|ISSUE_DATE_IMPLAUSIBLE"
+
+  # An illegible or absent licence number, which on real documents happens when
+  # the seal covers it or the scan clips the header. The rule warns rather than
+  # errors on purpose — a false rejection of a valid number is worse than
+  # letting an odd one through to a human.
+  "licence-number-illegible|N/A|12/03/2018|15/01/2026|14/01/2027|rows|LICENCE_NUMBER_MISSING"
 )
 
 manifest_entries=()

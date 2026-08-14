@@ -141,16 +141,36 @@ const plausibleDates: Rule = (record, ctx) => {
 };
 
 /**
- * Licence number shape.
+ * Licence number shape, at two severities.
  *
- * Formats vary widely between the seven emirates and the free zones, so this
- * deliberately checks only what is true everywhere — it is a warning, never an
- * error. A false rejection of a valid number is far more damaging than letting
- * an odd one through to a human.
+ * Formats vary widely between the seven emirates and the free zones, so an
+ * unusual-looking number is only a warning: falsely rejecting a valid one is
+ * far more damaging than letting an odd one through to a human.
+ *
+ * **No digits at all is different, and it took a test to notice.** A specimen
+ * whose number was illegible came back as the literal string "N/A" — the model
+ * behaved correctly by transcribing rather than inventing — and the record
+ * passed as `valid`, because the rule only warned. A record that cannot
+ * identify which licence it describes is not fit to auto-approve, whatever the
+ * rest of it says. So an absent number is an error, and an `extraction` one:
+ * a seal covering the header is exactly the case where a second look helps.
  */
 const licenceNumberShape: Rule = (record) => {
   const raw = record.licenceNumber.trim();
   const digits = (raw.match(/\d/g) ?? []).length;
+
+  if (digits === 0) {
+    return [
+      {
+        code: 'LICENCE_NUMBER_MISSING',
+        kind: 'extraction',
+        severity: 'error',
+        path: 'licenceNumber',
+        message: `"${raw}" contains no digits, so it cannot identify a licence.`,
+        hint: 'Find the licence number on the page. It is usually near the top, labelled "License No.", "Licence Number" or رقم الرخصة, and may be partly covered by a seal — read what is underneath. Never return a placeholder such as "N/A"; if it is genuinely unreadable, say so rather than inventing one.',
+      },
+    ];
+  }
 
   if (digits >= 4 && /^[A-Za-z0-9\-/ ]+$/.test(raw)) return [];
 
