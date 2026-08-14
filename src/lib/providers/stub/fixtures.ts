@@ -19,11 +19,12 @@ export interface StubFixture {
 }
 
 const clean: TradeLicence = {
+  isTradeLicence: true,
   licenceNumber: '784512',
   legalNameEn: 'Al Maha Logistics Solutions L.L.C',
   legalNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
-  tradeNameEn: 'Al Maha Logistics Solutions L.L.C',
-  tradeNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
+  tradeNameEn: null,
+  tradeNameAr: null,
   legalForm: 'Limited Liability Company',
   managerName: 'Yousef Abdulrahman Al Marzooqi',
   issuingAuthority: 'Department of Economic Development - Dubai',
@@ -41,11 +42,12 @@ const clean: TradeLicence = {
 };
 
 const expired: TradeLicence = {
+  isTradeLicence: true,
   licenceNumber: 'SHAMS-11029',
   legalNameEn: 'Gulf Horizon Trading FZE',
   legalNameAr: 'أفق الخليج للتجارة',
-  tradeNameEn: 'Gulf Horizon Trading FZE',
-  tradeNameAr: 'أفق الخليج للتجارة',
+  tradeNameEn: null,
+  tradeNameAr: null,
   legalForm: 'Free Zone Establishment',
   managerName: 'Fatima Hassan Al Balushi',
   issuingAuthority: 'Sharjah Media City Free Zone Authority (SHAMS)',
@@ -67,11 +69,12 @@ const awkwardActivities = [
 ];
 
 const awkwardBase: TradeLicence = {
+  isTradeLicence: true,
   licenceNumber: 'CN-2094771',
   legalNameEn: 'Nakheel Technical Services L.L.C',
   legalNameAr: 'النخيل للخدمات الفنية ذ.م.م',
-  tradeNameEn: 'Nakheel Technical Services L.L.C',
-  tradeNameAr: 'النخيل للخدمات الفنية ذ.م.م',
+  tradeNameEn: null,
+  tradeNameAr: null,
   legalForm: 'Limited Liability Company',
   managerName: 'Rashid Omar Al Suwaidi',
   issuingAuthority: 'Abu Dhabi Department of Economic Development',
@@ -110,6 +113,7 @@ export const STUB_FIXTURES: Record<string, StubFixture> = {
 /** Returned for any document the stub has no fixture for. */
 export const STUB_UNKNOWN_DOCUMENT: TradeLicence = {
   ...clean,
+  isTradeLicence: true,
   licenceNumber: '000000',
   legalNameEn: 'Unrecognised Document (stub provider)',
   legalNameAr: null,

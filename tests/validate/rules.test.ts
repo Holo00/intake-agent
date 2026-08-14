@@ -10,11 +10,12 @@ import type { TradeLicence } from '@/lib/schema/trade-licence';
 const NOW = new Date('2026-08-13T00:00:00Z');
 
 const valid: TradeLicence = {
+  isTradeLicence: true,
   licenceNumber: '784512',
   legalNameEn: 'Al Maha Logistics Solutions L.L.C',
   legalNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
-  tradeNameEn: 'Al Maha Logistics Solutions L.L.C',
-  tradeNameAr: 'الماها لحلول الخدمات اللوجستية ذ.م.م',
+  tradeNameEn: null,
+  tradeNameAr: null,
   legalForm: 'Limited Liability Company',
   managerName: 'Yousef Abdulrahman Al Marzooqi',
   issuingAuthority: 'Department of Economic Development - Dubai',
@@ -193,5 +194,68 @@ describe('licence number shape', () => {
 
   it('hints against returning a placeholder, since that is what the model did', () => {
     expect(check({ licenceNumber: 'N/A' })[0]?.hint).toMatch(/never return a placeholder/i);
+  });
+});
+
+describe('a document that is not a trade licence', () => {
+  /**
+   * The commonest thing an intake endpoint receives after the correct
+   * document: a passport, an invoice, the blank back of a page.
+   */
+  const rejected = { isTradeLicence: false } as const;
+
+  it('is rejected outright', () => {
+    expect(codes(rejected)).toEqual(['NOT_A_TRADE_LICENCE']);
+  });
+
+  it('reports one clear reason rather than eleven symptoms of it', () => {
+    // Everything null, as it would be for an invoice. Without the
+    // short-circuit this would produce a wall of missing-field errors, and the
+    // actual answer — wrong document — would be buried among them.
+    const issues = check({
+      ...rejected,
+      licenceNumber: null,
+      legalNameEn: null,
+      issueDate: null,
+      expiryDate: null,
+      activities: [],
+    });
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.code).toBe('NOT_A_TRADE_LICENCE');
+  });
+
+  it('is a `document` finding with no hint, so the loop will not retry it', () => {
+    // Reading an invoice a second time does not turn it into a licence.
+    const [issue] = check(rejected);
+    expect(issue?.kind).toBe('document');
+    expect(issue?.hint).toBeUndefined();
+  });
+
+  it('does not fire on a genuine licence', () => {
+    expect(codes()).not.toContain('NOT_A_TRADE_LICENCE');
+  });
+});
+
+describe('identity fields on a document that claims to be a licence', () => {
+  it('errors when the licence number is absent entirely', () => {
+    const issues = check({ licenceNumber: null });
+    const missing = issues.find((i) => i.code === 'MISSING_REQUIRED_FIELD');
+
+    expect(missing?.path).toBe('licenceNumber');
+    expect(missing?.severity).toBe('error');
+    // Extraction, not document: a seal over the header is worth a second look.
+    expect(missing?.kind).toBe('extraction');
+  });
+
+  it('reports every missing identity field, not just the first', () => {
+    const issues = check({ licenceNumber: null, legalNameEn: null, expiryDate: null });
+    expect(issues.filter((i) => i.code === 'MISSING_REQUIRED_FIELD')).toHaveLength(3);
+  });
+
+  it('leaves genuinely optional fields alone when null', () => {
+    expect(codes({ managerName: null, establishmentDate: null, registeredAddress: null })).toEqual(
+      [],
+    );
   });
 });

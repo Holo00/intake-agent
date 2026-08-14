@@ -200,3 +200,43 @@ describe('the run log', () => {
     expect(JSON.stringify(entry)).not.toContain('Al Maha');
   });
 });
+
+describe('a document that is not a trade licence', () => {
+  /** What the model returns for an invoice: a rejection and nothing else. */
+  const rejecting = () =>
+    createStubProvider(() => ({
+      isTradeLicence: false,
+      licenceNumber: null,
+      legalNameEn: null,
+      legalNameAr: null,
+      tradeNameEn: null,
+      tradeNameAr: null,
+      legalForm: null,
+      managerName: null,
+      issuingAuthority: null,
+      emirate: null,
+      issueDate: null,
+      expiryDate: null,
+      establishmentDate: null,
+      activities: [],
+      registeredAddress: null,
+    }));
+
+  it('is rejected as needs_review', async () => {
+    const result = await run('clean', { provider: rejecting() });
+
+    expect(result.status).toBe('needs_review');
+    expect(result.issues.map((i) => i.code)).toEqual(['NOT_A_TRADE_LICENCE']);
+  });
+
+  it('costs one attempt, not two — re-reading cannot change what it is', async () => {
+    const result = await run('clean', { provider: rejecting() });
+    expect(result.attempts).toHaveLength(1);
+  });
+
+  it('still returns the (empty) record rather than throwing', async () => {
+    const result = await run('clean', { provider: rejecting() });
+    expect(result.record).not.toBeNull();
+    expect(result.record?.isTradeLicence).toBe(false);
+  });
+});

@@ -13,7 +13,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/live/**/*.live.test.ts'],
-    testTimeout: 90_000,
+    testTimeout: 120_000,
+    // The pacing pause runs in beforeEach, which has its own separate budget.
+    hookTimeout: 120_000,
     // Live calls are rate-limited; running them in parallel just earns 429s.
     fileParallelism: false,
   },

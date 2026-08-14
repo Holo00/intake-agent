@@ -164,3 +164,119 @@ describe('the wrapper is transparent', () => {
     expect(seen).toHaveBeenCalledWith('read the licence');
   });
 });
+
+describe('honouring the provider\'s stated delay', () => {
+  /**
+   * A 429 from Gemini carries `retryDelay: "49s"`. Guessing with a ~2s
+   * exponential ceiling burns every attempt before the window can reopen —
+   * found when the live suite tripped a 5-per-minute limit and all three
+   * retries were spent inside two seconds.
+   */
+  it('waits roughly as long as the provider asked, not the exponential ceiling', async () => {
+    const delays: number[] = [];
+    const provider = flaky(
+      1,
+      new IntakeError('PROVIDER_RATE_LIMITED', 'slow down', { retryAfterMs: 49_000 }),
+    );
+
+    await withRetry(provider, {
+      maxRetries: 2,
+      baseDelayMs: 100,
+      random: () => 1,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    }).extract(request());
+
+    expect(delays).toEqual([49_000]);
+  });
+
+  it('still jitters, so throttled clients do not retry in lockstep', async () => {
+    const delays: number[] = [];
+    const provider = flaky(
+      1,
+      new IntakeError('PROVIDER_RATE_LIMITED', 'slow down', { retryAfterMs: 10_000 }),
+    );
+
+    await withRetry(provider, {
+      maxRetries: 2,
+      baseDelayMs: 100,
+      random: () => 0, // the low end of the jitter window
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    }).extract(request());
+
+    // Half the stated delay at minimum — spread across the window rather than
+    // every client piling onto its leading edge.
+    expect(delays).toEqual([5_000]);
+  });
+
+  it('falls back to exponential backoff when the provider says nothing', async () => {
+    const delays: number[] = [];
+    const provider = flaky(1, new IntakeError('PROVIDER_RATE_LIMITED', 'slow down'));
+
+    await withRetry(provider, {
+      maxRetries: 2,
+      baseDelayMs: 100,
+      random: () => 1,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    }).extract(request());
+
+    expect(delays).toEqual([100]);
+  });
+});
+
+describe('a wait longer than the run is allowed to take', () => {
+  /**
+   * Observed live: a 429 stating `retryDelay: 49s` against a 45s run deadline.
+   * Sleeping into it reported PROVIDER_TIMEOUT, blaming the clock for what was
+   * really a rate limit — and burned the whole budget to reach the wrong
+   * conclusion.
+   */
+  it('is abandoned immediately, keeping the accurate error code', async () => {
+    const slept: number[] = [];
+    const provider = flaky(
+      99,
+      new IntakeError('PROVIDER_RATE_LIMITED', 'slow down', { retryAfterMs: 49_000 }),
+    );
+
+    const wrapped = withRetry(provider, {
+      maxRetries: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 45_000,
+      random: () => 1,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+
+    await expect(wrapped.extract(request())).rejects.toMatchObject({
+      code: 'PROVIDER_RATE_LIMITED',
+    });
+    expect(slept).toEqual([]);
+    expect(provider.calls).toBe(1);
+  });
+
+  it('still retries a wait that fits inside the budget', async () => {
+    const slept: number[] = [];
+    const provider = flaky(
+      1,
+      new IntakeError('PROVIDER_RATE_LIMITED', 'slow down', { retryAfterMs: 4_000 }),
+    );
+
+    await withRetry(provider, {
+      maxRetries: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 45_000,
+      random: () => 1,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    }).extract(request());
+
+    expect(slept).toEqual([4_000]);
+  });
+});

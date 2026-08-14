@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tax Invoice — not a trade licence</title>
+    <link rel="stylesheet" href="./licence.css" />
+    <style>
+      /* A commercial invoice: the wrong document, and deliberately the *hard*
+         wrong document.
+
+         A blank page is easy to reject. An invoice is not — it carries a
+         company name in two scripts, a UAE address, an issue date, a reference
+         number and an authority-looking header. Every individual signal a naive
+         classifier might key on is present. Only the document as a whole says
+         "invoice", which is why the schema description tells the model to judge
+         it that way rather than on the presence of a company name or a date. */
+      .inv-meta {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 1.5mm 6mm;
+        font-size: 9.5pt;
+        margin-top: 4mm;
+      }
+      .inv-meta .k { color: #555; }
+      .inv-meta .v { font-weight: 700; }
+      .inv-meta .ar { direction: rtl; text-align: right; color: #555; }
+      .lines { width: 100%; border-collapse: collapse; margin-top: 5mm; }
+      .lines th, .lines td { border: 0.5pt solid #c8c8c8; padding: 2.2mm 3mm; font-size: 9.5pt; }
+      .lines th { background: #fafaf7; text-align: left; font-weight: 600; }
+      .lines td.num { text-align: right; }
+      .totals { margin-top: 4mm; margin-left: auto; width: 80mm; }
+      .totals div { display: flex; justify-content: space-between; padding: 1.4mm 0; font-size: 9.5pt; }
+      .totals .grand { border-top: 1pt solid #333; font-weight: 700; margin-top: 1mm; padding-top: 2mm; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="header">
+        <div class="en">
+          <div class="authority">Al Maha Logistics<br />Solutions L.L.C</div>
+          <div class="country">Dubai, United Arab Emirates</div>
+        </div>
+        <div class="emblem">TAX<br />INVOICE<br />★</div>
+        <div class="ar">
+          <div class="authority">الماها لحلول الخدمات<br />اللوجستية ذ.م.م</div>
+          <div class="country">دبي، الإمارات العربية المتحدة</div>
+        </div>
+      </div>
+
+      <div class="doc-title">
+        <div>Tax Invoice</div>
+        <div class="ar">فاتورة ضريبية</div>
+      </div>
+
+      <div class="inv-meta">
+        <span class="k">Invoice No.</span><span class="v">INV-2026-04412</span><span class="ar">رقم الفاتورة</span>
+        <span class="k">Invoice Date</span><span class="v">02/07/2026</span><span class="ar">تاريخ الفاتورة</span>
+        <span class="k">Due Date</span><span class="v">01/08/2026</span><span class="ar">تاريخ الاستحقاق</span>
+        <span class="k">TRN</span><span class="v">100447829300003</span><span class="ar">رقم التسجيل الضريبي</span>
+        <span class="k">Bill To</span><span class="v">Gulf Horizon Trading FZE</span><span class="ar">إلى</span>
+      </div>
+
+      <table class="lines">
+        <tr>
+          <th>Description</th>
+          <th>Qty</th>
+          <th>Unit (AED)</th>
+          <th>Amount (AED)</th>
+        </tr>
+        <tr>
+          <td>Land freight — Jebel Ali to Mussafah</td>
+          <td class="num">12</td>
+          <td class="num">850.00</td>
+          <td class="num">10,200.00</td>
+        </tr>
+        <tr>
+          <td>Warehousing, July 2026 (pallet/month)</td>
+          <td class="num">40</td>
+          <td class="num">115.00</td>
+          <td class="num">4,600.00</td>
+        </tr>
+        <tr>
+          <td>Packaging and palletisation</td>
+          <td class="num">1</td>
+          <td class="num">1,750.00</td>
+          <td class="num">1,750.00</td>
+        </tr>
+      </table>
+
+      <div class="totals">
+        <div><span>Subtotal</span><span>16,550.00</span></div>
+        <div><span>VAT @ 5%</span><span>827.50</span></div>
+        <div class="grand"><span>Total Due (AED)</span><span>17,377.50</span></div>
+      </div>
+
+      <div class="footer">
+        <div class="footnote">
+          Payment due within 30 days. Bank transfer to Emirates NBD, IBAN on request.
+          This invoice is issued under the trade licence of the supplier named above.
+        </div>
+      </div>
+
+      <div class="synthetic">
+        SYNTHETIC SPECIMEN — generated for testing document rejection. Not a real invoice, entity or
+        tax registration number.
+      </div>
+    </div>
+  </body>
+</html>

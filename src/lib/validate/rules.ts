@@ -24,7 +24,8 @@ const EARLIEST_PLAUSIBLE = new Date('1971-12-02');
 /** Licences run 1–5 years. Beyond that, one of the two dates was misread. */
 const MAX_TERM_YEARS = 5;
 
-function parseDate(value: string): Date | null {
+function parseDate(value: string | null): Date | null {
+  if (value === null) return null;
   const d = new Date(`${value}T00:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -156,6 +157,8 @@ const plausibleDates: Rule = (record, ctx) => {
  * a seal covering the header is exactly the case where a second look helps.
  */
 const licenceNumberShape: Rule = (record) => {
+  // Absence is the identity rule's business, not this one's.
+  if (record.licenceNumber === null) return [];
   const raw = record.licenceNumber.trim();
   const digits = (raw.match(/\d/g) ?? []).length;
 
@@ -255,7 +258,39 @@ const arabicNameIsArabic: Rule = (record) => {
   );
 };
 
+/**
+ * The fields without which a record cannot identify the licence it describes.
+ *
+ * Nullable in the schema because a rejected document genuinely has none of
+ * them, and a required string would force the model to invent one. Required
+ * *here*, conditionally, which is the right place for a rule that depends on
+ * another field's value.
+ */
+const IDENTITY_FIELDS = [
+  ['licenceNumber', 'the licence number'],
+  ['legalNameEn', 'the name of the licensed entity'],
+  ['issueDate', 'the issue date'],
+  ['expiryDate', 'the expiry date'],
+] as const;
+
+const identityFieldsPresent: Rule = (record) =>
+  IDENTITY_FIELDS.flatMap(([field, description]) =>
+    record[field] === null
+      ? [
+          {
+            code: 'MISSING_REQUIRED_FIELD',
+            kind: 'extraction' as const,
+            severity: 'error' as const,
+            path: field,
+            message: `${field} is missing, so the record cannot identify a licence.`,
+            hint: `Find ${description} on the document and return it. If a seal or a fold obscures it, read what is underneath rather than returning null.`,
+          },
+        ]
+      : [],
+  );
+
 const RULES: readonly Rule[] = [
+  identityFieldsPresent,
   expiryAfterIssue,
   notExpired,
   plausibleDates,
@@ -264,7 +299,30 @@ const RULES: readonly Rule[] = [
   arabicNameIsArabic,
 ];
 
-/** Apply every rule. Order of the returned issues is stable across runs. */
+/**
+ * Apply every rule. Order of the returned issues is stable across runs.
+ *
+ * Rejection short-circuits everything else. Once the model has said this is not
+ * a trade licence, complaining that it has no expiry date is noise — the answer
+ * is not "fix the dates", it is "this is the wrong document". Reporting one
+ * clear reason beats reporting eleven symptoms of it.
+ *
+ * It is a `document` finding with no hint, so the loop will not retry: reading
+ * an invoice a second time does not turn it into a licence.
+ */
 export function applyRules(record: TradeLicence, ctx: RuleContext): Issue[] {
+  if (!record.isTradeLicence) {
+    return [
+      {
+        code: 'NOT_A_TRADE_LICENCE',
+        kind: 'document',
+        severity: 'error',
+        path: '',
+        message:
+          'This document is not a UAE trade licence. Rejected without extraction; route to a human or ask for the correct document.',
+      },
+    ];
+  }
+
   return RULES.flatMap((rule) => rule(record, ctx));
 }

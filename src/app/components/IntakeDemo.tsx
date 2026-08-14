@@ -206,9 +206,20 @@ export function IntakeDemo({ samples, faults }: { samples: Sample[]; faults: Fau
         )}
 
         {state.phase === 'failed' && (
-          <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm">
+          <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm">
             <code className="font-mono text-xs font-semibold">{state.code}</code>
-            <p className="mt-1">{state.message}</p>
+            <p>{state.message}</p>
+            {state.code === 'PROVIDER_RATE_LIMITED' && (
+              <p className="text-xs leading-relaxed text-muted">
+                This instance runs on Gemini&apos;s free tier, which allows 20 model calls per day.
+                That allowance is spent for today — nothing is broken, and what you are seeing is the
+                error path doing its job: two jittered retries, then a clean 429 with a stable code
+                rather than a stack trace. Everything except the model call is exercised by the 80
+                offline tests in the repo, which need no key. Try again tomorrow, or clone it and run
+                it with <code className="font-mono">LLM_PROVIDER=stub</code> to see the full loop
+                immediately.
+              </p>
+            )}
           </div>
         )}
 

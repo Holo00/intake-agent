@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import expectations from '@/../samples/malformed/expectations.json';
 import { runIntake } from '@/lib/agent/run';
 import { createGeminiProvider } from '@/lib/providers/gemini';
@@ -30,10 +30,26 @@ import { createGeminiProvider } from '@/lib/providers/gemini';
 
 const enabled = process.env.RUN_LIVE_TESTS === '1' && Boolean(process.env.GEMINI_API_KEY);
 
+/**
+ * Gemini's free tier allows 5 requests per minute per model. This suite makes
+ * one call per specimen, so it has to pace itself or it spends the whole
+ * allowance in the first fifteen seconds and the rest fail on quota rather
+ * than on anything to do with the rules.
+ *
+ * Deliberately a fixed pause rather than leaning on `withRetry`: the retry
+ * decorator exists to survive an unexpected throttle, not to absorb a rate
+ * limit we could have avoided by not making the request yet. Overriding via
+ * env for anyone on a paid tier, where the pacing is pure waste.
+ */
+const PACE_MS = Number(process.env.LIVE_TEST_PACE_MS ?? 13_000);
+const pace = () => new Promise((resolve) => setTimeout(resolve, PACE_MS));
+
 // Fixed so the expiry/future rules test the same thing in six months.
 const NOW = new Date('2026-08-13T00:00:00Z');
 
 describe.skipIf(!enabled)('validation rules against a live model', () => {
+  beforeEach(pace);
+
   const provider = createGeminiProvider(
     process.env.GEMINI_API_KEY ?? '',
     process.env.GEMINI_MODEL ?? 'gemini-3.6-flash',
@@ -57,7 +73,7 @@ describe.skipIf(!enabled)('validation rules against a live model', () => {
 
     const codes = result.issues.map((i) => i.code);
     expect(codes, `${id}: got ${codes.join(', ') || 'no issues'}`).toContain(expected);
-  }, 90_000);
+  }, 120_000);
 
   it('reads a clean licence without raising anything', async () => {
     const result = await runIntake({
@@ -75,5 +91,5 @@ describe.skipIf(!enabled)('validation rules against a live model', () => {
     // every case above.
     expect(result.issues).toEqual([]);
     expect(result.status).toBe('valid');
-  }, 90_000);
+  }, 120_000);
 });

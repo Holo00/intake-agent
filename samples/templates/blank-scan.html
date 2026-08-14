@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Blank scan — not a trade licence</title>
+    <link rel="stylesheet" href="./licence.css" />
+    <style>
+      /* A scanned page with nothing on it: the fax-cover / back-of-page /
+         accidentally-scanned-the-lid case, which any intake endpoint receives
+         weekly.
+
+         Not truly empty — a real blank scan carries the scanner's artefacts,
+         and an all-white page would be a softer test than reality. The faint
+         edge shadow and page number are what a duplex scanner leaves behind. */
+      .edge {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 6mm;
+        background: linear-gradient(to right, #d8d6d0, #f4f2ec 70%, transparent);
+      }
+      .speck { position: absolute; background: #cfcdc7; border-radius: 50%; }
+      .page-no {
+        position: absolute;
+        bottom: 12mm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 8pt;
+        color: #b8b6b0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" style="background: #fbfaf6">
+      <div class="edge"></div>
+      <div class="speck" style="top: 62mm; left: 47mm; width: 0.7mm; height: 0.7mm"></div>
+      <div class="speck" style="top: 118mm; left: 141mm; width: 0.5mm; height: 0.5mm"></div>
+      <div class="speck" style="top: 196mm; left: 88mm; width: 0.9mm; height: 0.6mm"></div>
+      <div class="page-no">- 2 -</div>
+    </div>
+  </body>
+</html>

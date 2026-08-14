@@ -151,6 +151,27 @@ function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 }
 
 /**
+ * A 429 from Gemini carries a `RetryInfo.retryDelay` such as `"49s"` — the
+ * server telling us when its window reopens. The SDK exposes it on
+ * `errorDetails` rather than as a header, so it is dug out here and handed up
+ * as a plain number. The rest of the codebase never sees Google's shape.
+ */
+function parseRetryDelay(cause: unknown): number | undefined {
+  const details = (cause as { errorDetails?: unknown })?.errorDetails;
+  if (!Array.isArray(details)) return undefined;
+
+  for (const detail of details) {
+    const delay = (detail as { retryDelay?: unknown })?.retryDelay;
+    if (typeof delay !== 'string') continue;
+
+    const seconds = Number.parseFloat(delay);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.round(seconds * 1000);
+  }
+
+  return undefined;
+}
+
+/**
  * Google's SDK reports everything as a message string, so status matching is
  * the only option available. Kept in one place so the rest of the codebase
  * never has to know that.
@@ -161,7 +182,10 @@ function mapError(cause: unknown): IntakeError {
   const message = cause instanceof Error ? cause.message : String(cause);
 
   if (/\[429/.test(message) || /quota|rate limit/i.test(message)) {
-    return new IntakeError('PROVIDER_RATE_LIMITED', 'Model provider rate limit reached.', { cause });
+    return new IntakeError('PROVIDER_RATE_LIMITED', 'Model provider rate limit reached.', {
+      cause,
+      retryAfterMs: parseRetryDelay(cause),
+    });
   }
   if (/\[40[13]/.test(message) || /api key|permission/i.test(message)) {
     return new IntakeError('PROVIDER_AUTH', 'Model provider rejected our credentials.', { cause });

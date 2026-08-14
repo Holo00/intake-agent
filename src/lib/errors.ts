@@ -44,13 +44,28 @@ export class IntakeError extends Error {
   readonly code: IntakeErrorCode;
   readonly status: number;
   readonly transient: boolean;
+  /**
+   * How long the provider asked us to wait, in milliseconds, when it said so.
+   *
+   * Gemini returns a `RetryInfo.retryDelay` alongside a 429 — the server knows
+   * when its window reopens and we do not. Guessing with exponential backoff
+   * when the answer was in the response is how a client hammers an API that
+   * politely told it to wait: our default ceiling is ~2s against a stated 49s,
+   * so every retry was spent before the window could possibly have reopened.
+   */
+  readonly retryAfterMs?: number;
 
-  constructor(code: IntakeErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: IntakeErrorCode,
+    message: string,
+    options?: { cause?: unknown; retryAfterMs?: number },
+  ) {
     super(message, options);
     this.name = 'IntakeError';
     this.code = code;
     this.status = HTTP_STATUS[code];
     this.transient = TRANSIENT.has(code);
+    this.retryAfterMs = options?.retryAfterMs;
   }
 
   /**

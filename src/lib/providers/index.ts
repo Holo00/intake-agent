@@ -31,6 +31,8 @@ function build(cfg: Config): ExtractionProvider {
       return withRetry(createGeminiProvider(cfg.GEMINI_API_KEY!, cfg.GEMINI_MODEL), {
         maxRetries: cfg.PROVIDER_MAX_RETRIES,
         baseDelayMs: cfg.PROVIDER_RETRY_BASE_MS,
+        // Never start a wait longer than the run itself is allowed to take.
+        maxDelayMs: cfg.EXTRACTION_TIMEOUT_MS,
       });
     case 'stub':
       return createStubProvider();

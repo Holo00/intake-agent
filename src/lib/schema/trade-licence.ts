@@ -24,16 +24,37 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date in YYYY-MM-DD format');
 
 export const tradeLicenceSchema = z.object({
+  /**
+   * Asked first, and the only field that is never null.
+   *
+   * An intake endpoint receives the wrong document constantly — a passport, an
+   * invoice, a blank scan, the second page of something. Without an explicit
+   * way to say "this is not the document you asked for", a model handed an
+   * invoice will do its best to find a licence number in it, and the pipeline
+   * will confidently return a record that describes nothing.
+   *
+   * Rejection is a `document` finding, not an extraction fault: reading an
+   * invoice again does not turn it into a licence, so it must never trigger a
+   * correction attempt.
+   */
+  isTradeLicence: z
+    .boolean()
+    .describe(
+      'True only if this document is a UAE trade or commercial licence. False for anything else — a passport, an Emirates ID, an invoice, a contract, a blank page, or an unrelated image. Judge the document as a whole; do not answer true merely because a company name or a date appears somewhere on it. When false, set every other field to null rather than guessing.',
+    ),
+
   licenceNumber: z
     .string()
+    .nullable()
     .describe(
       'The trade licence number, printed near the top. Labelled "License No." / "Licence Number" / رقم الرخصة. Digits, sometimes with a CN/ or a dash prefix. Copy it exactly as printed.',
     ),
 
   legalNameEn: z
     .string()
+    .nullable()
     .describe(
-      'The entity holding the licence, in English, including its legal form. Labelled "License", "Licensee", "Trade Name" or صاحب الرخصة depending on the issuer. Where the document shows both a licence holder and a separate trade name, this is the holder.',
+      'The entity the licence is issued to, in English, including its legal form. Never null on a genuine licence: if the document prints only one name — commonly labelled "Trade Name" or الاسم التجاري — that name goes here. Only when the document prints a licence holder AND a separate trade name does this take the holder ("License", "Licensee", صاحب الرخصة) and the trade name go in tradeNameEn.',
     ),
 
   legalNameAr: z
@@ -52,13 +73,15 @@ export const tradeLicenceSchema = z.object({
     .string()
     .nullable()
     .describe(
-      'The trading name (الاسم التجاري) where the document shows it as a field distinct from the licence holder. Return it even when it matches the holder exactly — transcribe what is printed. Null only when the document has no such field.',
+      'Null unless the document prints TWO separate name fields — a licence holder ("License", "Licensee", صاحب الرخصة) AND a trade name ("Trade Name", الاسم التجاري). Only then does the trade name go here, and it should be returned even if identical to the holder. When the document prints just one name, whatever its label, that name belongs in legalNameEn and this field is null.',
     ),
 
   tradeNameAr: z
     .string()
     .nullable()
-    .describe('The trading name in Arabic, where printed. Null otherwise. Never a transliteration.'),
+    .describe(
+      'The Arabic trade name, under the same condition as tradeNameEn: only when the document prints a separate holder and trade name. Null otherwise. Never a transliteration.',
+    ),
 
   legalForm: z
     .string()
@@ -81,6 +104,7 @@ export const tradeLicenceSchema = z.object({
 
   issuingAuthority: z
     .string()
+    .nullable()
     .describe(
       'The authority that issued the licence, e.g. "Department of Economic Development - Dubai", "Abu Dhabi Department of Economic Development", or a free-zone authority such as "DMCC" or "SHAMS".',
     ),
@@ -93,11 +117,13 @@ export const tradeLicenceSchema = z.object({
     ),
 
   issueDate: isoDate
+    .nullable()
     .describe(
       'Date of issue (تاريخ الإصدار), normalised to YYYY-MM-DD. Source documents commonly use DD/MM/YYYY — UAE licences are day-first, so 03/04/2024 is 2024-04-03.',
     ),
 
   expiryDate: isoDate
+    .nullable()
     .describe(
       'Date of expiry (تاريخ الانتهاء), normalised to YYYY-MM-DD. Same day-first convention as the issue date.',
     ),
